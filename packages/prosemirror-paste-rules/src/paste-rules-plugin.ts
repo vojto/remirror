@@ -355,7 +355,7 @@ interface PasteRuleHandler<Rule extends RegexPasteRule> {
 
 interface TransformerProps<Rule extends RegexPasteRule> {
   rule: Rule;
-  textNode: ProsemirrorNode;
+  textNode: ProsemirrorNode | undefined;
   nodes: ProsemirrorNode[];
   match: RegExpExecArray;
   schema: EditorSchema;
@@ -421,11 +421,14 @@ function createPasteRuleHandler<Rule extends RegexPasteRule>(
           nodes.push(child.cut(pos, start));
         }
 
-        let textNode = child.cut(start, end);
+        let textNode: ProsemirrorNode | undefined = child.cut(start, end);
 
         // When a transformed value was provided.
         if (isString(transformedCapturedValue)) {
-          textNode = schema.text(transformedCapturedValue, textNode.marks);
+          textNode =
+            transformedCapturedValue === ''
+              ? undefined
+              : schema.text(transformedCapturedValue, textNode.marks);
         }
 
         // When a capture value is provided use it.
@@ -463,6 +466,11 @@ function createPasteRuleHandler<Rule extends RegexPasteRule>(
  */
 function markRuleTransformer(props: TransformerProps<MarkPasteRule>) {
   const { nodes, rule, textNode, match } = props;
+
+  if (!textNode) {
+    return;
+  }
+
   const { getAttributes, markType } = rule;
   const attributes = isFunction(getAttributes) ? getAttributes(match, false) : getAttributes;
   nodes.push(textNode.mark([markType.create(attributes), ...textNode.marks]));
@@ -483,6 +491,11 @@ function nodeRuleTransformer(props: TransformerProps<NodePasteRule>) {
  */
 function textRuleTransformer(props: TransformerProps<TextPasteRule>) {
   const { nodes, textNode } = props;
+
+  if (!textNode) {
+    return;
+  }
+
   nodes.push(textNode);
 }
 
